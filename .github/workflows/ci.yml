@@ -1,0 +1,48 @@
+name: Nexus Backend CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Health Check Test
+      run: |
+        node -e "
+        const http = require('http');
+        const server = require('./index.js');
+        setTimeout(() => {
+          http.get('http://localhost:5000/health', (res) => {
+            if (res.statusCode === 200) {
+              console.log('Health check passed!');
+              process.exit(0);
+            } else {
+              console.error('Health check failed with status: ' + res.statusCode);
+              process.exit(1);
+            }
+          }).on('error', (e) => {
+            console.error('Request failed: ' + e.message);
+            process.exit(1);
+          });
+        }, 3000);
+        "

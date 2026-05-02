@@ -1,7 +1,7 @@
 const app = require('./app');
 const { PORT } = require('./config/config');
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`
   🚀 NEXUS BACKEND STARTED
   -------------------------
@@ -12,3 +12,5 @@ app.listen(PORT, () => {
   -------------------------
   `);
 });
+
+module.exports = server;
