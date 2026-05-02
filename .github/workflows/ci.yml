@@ -26,23 +26,42 @@ jobs:
     - name: Install dependencies
       run: npm install
       
-    - name: Health Check Test
+    - name: Health & Chatbot Integration Test
       run: |
         node -e "
         const http = require('http');
         const server = require('./index.js');
-        setTimeout(() => {
+        
+        const checkHealth = () => new Promise((resolve, reject) => {
           http.get('http://localhost:5000/health', (res) => {
-            if (res.statusCode === 200) {
-              console.log('Health check passed!');
-              process.exit(0);
-            } else {
-              console.error('Health check failed with status: ' + res.statusCode);
-              process.exit(1);
-            }
-          }).on('error', (e) => {
-            console.error('Request failed: ' + e.message);
-            process.exit(1);
+            if (res.statusCode === 200) resolve();
+            else reject(new Error('Health check failed: ' + res.statusCode));
+          }).on('error', reject);
+        });
+
+        const checkChat = () => new Promise((resolve, reject) => {
+          const req = http.request('http://localhost:5000/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          }, (res) => {
+            if (res.statusCode === 200) resolve();
+            else reject(new Error('Chat check failed: ' + res.statusCode));
           });
+          req.on('error', reject);
+          req.write(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }));
+          req.end();
+        });
+
+        setTimeout(async () => {
+          try {
+            await checkHealth();
+            console.log('✅ Health check passed!');
+            await checkChat();
+            console.log('✅ Chatbot endpoint passed!');
+            process.exit(0);
+          } catch (e) {
+            console.error('❌ Integration test failed: ' + e.message);
+            process.exit(1);
+          }
         }, 3000);
         "
