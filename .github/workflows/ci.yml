@@ -30,6 +30,16 @@ jobs:
     - name: Install dependencies
       run: npm install
       
+    - name: Debug Environment (Safe)
+      run: |
+        if [ -z "$GROQ_API_KEY" ]; then
+          echo "❌ GROQ_API_KEY is EMPTY in CI environment"
+        else
+          echo "✅ GROQ_API_KEY is present (Length: ${#GROQ_API_KEY})"
+        fi
+      env:
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
     - name: Health & Chatbot Integration Test
       run: |
         node -e "
@@ -68,6 +78,7 @@ jobs:
           req.end();
         });
 
+        console.log('⏳ Waiting 5s for server to stabilize...');
         setTimeout(async () => {
           try {
             await checkHealth();
@@ -79,5 +90,8 @@ jobs:
             console.error('❌ Integration test failed: ' + e.message);
             process.exit(1);
           }
-        }, 3000);
+        }, 5000);
         "
+      env:
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        PORT: 5000
