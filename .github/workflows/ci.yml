@@ -14,6 +14,10 @@ jobs:
       matrix:
         node-version: [18.x, 20.x]
 
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      PORT: 5000
+
     steps:
     - uses: actions/checkout@v4
     
