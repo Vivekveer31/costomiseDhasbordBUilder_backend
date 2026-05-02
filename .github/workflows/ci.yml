@@ -45,40 +45,44 @@ jobs:
         node -e "
         const http = require('http');
         const server = require('./index.js');
+        const PORT = 5000;
         
         const checkHealth = () => new Promise((resolve, reject) => {
-          http.get('http://localhost:5000/health', (res) => {
+          http.get('http://localhost:' + PORT + '/health', (res) => {
             if (res.statusCode === 200) resolve();
             else reject(new Error('Health check failed: ' + res.statusCode));
-          }).on('error', reject);
+          }).on('error', (err) => reject(new Error('Health request failed: ' + err.message)));
         });
 
         const checkChat = () => new Promise((resolve, reject) => {
-          const req = http.request('http://localhost:5000/api/chat', {
+          console.log('Sending chat request to port ' + PORT + '...');
+          const req = http.request('http://localhost:' + PORT + '/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
+              console.log('Chat response status: ' + res.statusCode);
               if (res.statusCode === 200) {
                 const body = JSON.parse(data);
+                console.log('Chat response body: ' + JSON.stringify(body).substring(0, 100) + '...');
                 if (body.message && body.message.includes('Please add your Groq API key')) {
-                  reject(new Error('Chat check failed: Secret GROQ_API_KEY is not working in CI'));
+                  reject(new Error('Chat check failed: Secret GROQ_API_KEY is still using placeholder.'));
                 } else {
                   resolve();
                 }
               } else {
-                reject(new Error('Chat check failed: ' + res.statusCode));
+                reject(new Error('Chat check failed: ' + res.statusCode + ' - ' + data));
               }
             });
           });
-          req.on('error', reject);
+          req.on('error', (err) => reject(new Error('Chat request failed: ' + err.message)));
           req.write(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }));
           req.end();
         });
 
-        console.log('⏳ Waiting 5s for server to stabilize...');
+        console.log('⏳ Waiting 7s for server to initialize...');
         setTimeout(async () => {
           try {
             await checkHealth();
@@ -90,7 +94,7 @@ jobs:
             console.error('❌ Integration test failed: ' + e.message);
             process.exit(1);
           }
-        }, 5000);
+        }, 7000);
         "
       env:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
