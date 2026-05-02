@@ -48,8 +48,20 @@ jobs:
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           }, (res) => {
-            if (res.statusCode === 200) resolve();
-            else reject(new Error('Chat check failed: ' + res.statusCode));
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              if (res.statusCode === 200) {
+                const body = JSON.parse(data);
+                if (body.message && body.message.includes('Please add your Groq API key')) {
+                  reject(new Error('Chat check failed: Secret GROQ_API_KEY is not working in CI'));
+                } else {
+                  resolve();
+                }
+              } else {
+                reject(new Error('Chat check failed: ' + res.statusCode));
+              }
+            });
           });
           req.on('error', reject);
           req.write(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }));
@@ -61,7 +73,7 @@ jobs:
             await checkHealth();
             console.log('✅ Health check passed!');
             await checkChat();
-            console.log('✅ Chatbot endpoint passed!');
+            console.log('✅ Chatbot AI Integrated & Verified!');
             process.exit(0);
           } catch (e) {
             console.error('❌ Integration test failed: ' + e.message);
